@@ -1,0 +1,43 @@
+#!/usr/bin/env python
+import sys
+import os
+import subprocess
+import yaml
+
+
+DEFAULT_JUJU_HOME = '.juju'
+
+
+def get_juju_env():
+    env = subprocess.check_output(['juju', 'env'])
+    return env.strip()  # Remove newlines
+
+
+def get_juju_home():
+    if 'JUJU_HOME' in os.environ:
+        return os.environ['JUJU_HOME']
+    else:
+        return os.path.join(os.path.expanduser('~'), DEFAULT_JUJU_HOME)
+
+
+def get_pass(env):
+    home = get_juju_home()
+    filename = '%s.jenv' % env
+    jenv_path = os.path.join(home, 'environments', filename)
+    try:
+        data = yaml.load(file(jenv_path))
+    except IOError:
+        sys.exit('Could not find jenv file: %s' % jenv_path)
+    return data['password']
+
+
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        env = sys.argv[1]
+    else:
+        env = get_juju_env()
+    password = get_pass(env)
+    echo = subprocess.Popen(['echo', password], stdout=subprocess.PIPE)
+    subprocess.Popen(
+        ['xclip', '-selection', 'clipboard'], stdin=echo.stdout)
+    print 'password copied to clipboard.'
